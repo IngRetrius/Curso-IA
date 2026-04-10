@@ -1,76 +1,66 @@
-# ETL - Base de Datos de Empresas Activas
-## Camara de Comercio de Ibague - Corte a 31 de Diciembre de 2025
+# Proyectos de Machine Learning
 
 **Autor:** Juan Camilo Perea Possos
 
 ---
 
-## Descripcion
+## Proyectos
 
-Proceso completo de **ETL (Extract, Transform, Load)** sobre la base de datos publica de empresas y/o entidades activas registradas en la jurisdiccion de la Camara de Comercio de Ibague, Colombia.
+### Adult Income Classification
+Clasificacion binaria sobre el dataset Adult (UCI). Predice si una persona gana `>50K` al año.
 
-El dataset contiene **20,280 registros** con **83 variables** que incluyen informacion como razon social, NIT, actividad economica (CIIU), tamano empresarial, municipio, participacion de mujeres, entre otros.
+**Dataset:** 32,561 registros, 15 variables (edad, educacion, ocupacion, etc.)
+**Mejor modelo:** XGBoost con GridSearch — F1=0.7289, accuracy=0.8769
 
-## Estructura del Proyecto
+#### Fases completadas
 
+| Fase | Descripcion | Resultado |
+|------|-------------|-----------|
+| 0 | Setup | `df.shape=(32561, 15)` |
+| 1 | Limpieza y codificacion | `X.shape=(32561, 104)`, NaN=0 |
+| 2 | EDA | Top feature: `marital_status_Married-civ-spouse` (corr=0.44) |
+| 3 | Baseline Naive Bayes | F1=0.4759, accuracy=0.8099 |
+| 4 | Modelos avanzados (default) | XGBoost F1=0.7181 / RF F1=0.6723 / AdaBoost F1=0.6636 / DT F1=0.6303 |
+| 5 | Optimizacion HPO (5 metodos) | GridSearch/XGBoost F1=0.7289 |
+| 6 | Reduccion de dimensionalidad | PCA F1=0.6114 / LDA F1=0.5421 / UMAP F1=0.5615 / t-SNE viz |
+| 7 | Comparacion final | 18 configuraciones evaluadas, XGBoost domina |
+| 8 | Produccion | Pipeline end-to-end guardado en `Adult/models/adult_best_model.joblib` |
+
+#### Estructura
 ```
-Curso-IA/
-├── README.md
-├── requirements.txt
-├── etlcamara.ipynb
-├── .gitignore
-└── data/
-    └── BASE_DE_DATOS_DE_EMPRESAS_Y_O_ENTIDADES_ACTIVAS_...csv
+Adult/
+├── Adults_Classification.ipynb   # Notebook principal con outputs
+├── Adults_Project_Plan.md        # Plan de ejecucion y resultados por fase
+└── models/
+    ├── adult_best_model.joblib   # Pipeline produccion (OHE + XGBoost)
+    ├── cm_advanced_models.png
+    ├── cm_gaussiannb.png
+    ├── eda_heatmap.png
+    ├── eda_histogramas.png
+    └── eda_target.png
+data/
+└── adult.csv                     # Dataset UCI Adult (32,561 filas)
 ```
 
-## Contenido del Notebook
-
-| Paso | Fase ETL | Descripcion |
-|------|----------|-------------|
-| 1 | - | Importacion de librerias |
-| 2 | **Extract** | Carga del CSV original |
-| 3 | - | Exploracion inicial del dataset |
-| 4 | **Transform** | Limpieza de datos (nulos, duplicados, tipos, texto) |
-| 5 | **Transform** | Analisis de correlacion y seleccion de variables |
-| 6 | **Transform** | Creacion de variables derivadas (municipio, antiguedad, CIIU) |
-| 7.1 | EDA | Histogramas (antiguedad, mujeres, socios) |
-| 7.2 | EDA | Nube de palabras (razones sociales) |
-| 7.3 | EDA | Graficos de barras (organizacion y tamano empresarial) |
-| 8 | **Load** | Exportacion a CSV limpio |
-| 9 | - | Resumen y conclusiones |
-
-## Transformaciones Realizadas
-
-- Reemplazo de valores "No reporta" y "No aplica" por NaN
-- Eliminacion de filas duplicadas
-- Conversion de fechas (YYYYMMDD → datetime)
-- Conversion de columnas numericas (texto → numerico)
-- Estandarizacion de texto (mayusculas, sin espacios extra)
-- Eliminacion de columnas con >80% de valores nulos
-- Eliminacion de variables redundantes por correlacion (>0.85)
-- Creacion de variables: NOMBRE_MUNICIPIO, ANTIGUEDAD_ANOS, CIIU_CODIGO, SECCION_ECONOMICA
+#### Metodos HPO comparados
+| Metodo | RF F1 | XGB F1 |
+|--------|-------|--------|
+| GridSearchCV | 0.6984 | **0.7289** |
+| RandomizedSearchCV | 0.6920 | 0.7141 |
+| Optuna (TPE) | 0.6978 | 0.7282 |
+| Hyperopt (TPE) | 0.6947 | 0.7223 |
+| NNI (simulacion local) | 0.6990 | 0.7274 |
 
 ## Requisitos
 
-- Python 3.12+
-- Librerias listadas en `requirements.txt`
+- Python 3.10+
+- Dependencias en `requirements.txt`
 
 ## Instalacion y Ejecucion
 
 ```bash
-# Crear ambiente virtual
 python -m venv venv
-
-# Activar ambiente virtual (Windows PowerShell)
 .\venv\Scripts\Activate.ps1
-
-# Instalar dependencias
 pip install -r requirements.txt
-
-# Abrir el notebook
-jupyter notebook etlcamara.ipynb
+jupyter notebook Adult/Adults_Classification.ipynb
 ```
-
-## Fuente de Datos
-
-Dataset publico de la Camara de Comercio de Ibague. Base de datos de empresas y/o entidades activas con corte al 31 de diciembre de 2025.
