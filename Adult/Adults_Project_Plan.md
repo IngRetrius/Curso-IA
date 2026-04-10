@@ -1155,3 +1155,75 @@ Ground truth           : [0 0 0 0 0]
 5. **Split 60/20/20** para Fase 4 en adelante; **80/20** solo para el baseline de Fase 3.
 6. **Métrica principal:** F1 (binary, pos_label=1).
 7. **Todos los bloques** deben ejecutarse sin intervención manual.
+
+---
+
+## Mejoras pendientes y deuda técnica
+
+Lista priorizada de lo que falta para llevar el proyecto a un nivel de producción real.
+
+### Alta prioridad — afectan directamente la calidad del modelo
+
+- [ ] **Ajuste de threshold de decisión**
+  El modelo actual usa 0.5 por defecto. Con desbalance 76/24 y recall=0.69, ajustar el
+  threshold (ej. 0.35–0.40) puede recuperar >50K reales a costa de más falsos positivos.
+  Evaluar con curva PR y seleccionar threshold según el coste del caso de uso.
+
+- [ ] **Tratamiento del desbalance de clases**
+  Ninguna fase aplicó técnicas de balanceo. Opciones a comparar:
+  - `class_weight='balanced'` en XGBoost (`scale_pos_weight`) y RF.
+  - SMOTE sobre el training set (instalar `imbalanced-learn`).
+  - Undersample de la clase mayoritaria.
+  Métrica de comparación: F1 y también AUC-ROC para no sesgar por threshold.
+
+- [ ] **Validación cruzada estratificada en modelos finales**
+  Los resultados actuales son sobre un único split. Añadir `cross_val_score` con 5-fold
+  estratificado sobre el mejor modelo para estimar varianza real del F1.
+
+- [ ] **Curvas de aprendizaje**
+  Verificar si XGBoost tiene más para dar con más datos (underfitting) o ya está en el
+  plateau (overfitting). Guía para decidir si vale la pena conseguir más datos.
+
+### Media prioridad — mejoran rendimiento y robustez
+
+- [ ] **UMAP como feature extractor (no solo 2D)**
+  Probar `n_components=10, 20, 30` con UMAP y entrenar XGBoost sobre esos embeddings.
+  Con 2D la pérdida era esperada; con más componentes puede competir con el espacio full.
+
+- [ ] **Feature importance y selección**
+  Usar `feature_importances_` de XGBoost para eliminar features de baja importancia
+  (recordar que hay 104 columnas OHE). Un modelo más parco puede generalizar mejor.
+
+- [ ] **Ampliar espacio HPO de Optuna/Hyperopt**
+  Con `n_trials=100` en lugar de 20, Optuna/Hyperopt tienen alta probabilidad de superar
+  el GridSearch actual (F1=0.7289). El plan limitó trials por rendimiento del notebook.
+
+- [ ] **Stacking o voting ensemble**
+  Combinar XGBoost (F1=0.7289) + RF (F1=0.6990) + AdaBoost (F1=0.6636) con un
+  meta-clasificador logístico. Los tres modelos cometen errores distintos.
+
+- [ ] **Calibración de probabilidades**
+  Aplicar `CalibratedClassifierCV` sobre XGBoost para que `predict_proba` sea fiable.
+  Necesario si el pipeline de producción consume scores y no solo clases.
+
+### Baja prioridad — calidad de código y operaciones
+
+- [ ] **Corrección bug GPU en Fase 8**
+  La detección `"XGBoost" in type(classifier).__name__` falla porque el nombre de clase
+  es `XGBClassifier`. Corregir a `isinstance(classifier, XGBClassifier)`.
+
+- [ ] **Guardar figuras EDA y dim. reduction a disco**
+  Las figuras de Fase 2 y Fase 6 se renderizan pero no se persisten. Añadir
+  `plt.savefig(...)` antes de cada `plt.show()` para reproducibilidad.
+
+- [ ] **Logging de experimentos con MLflow o W&B**
+  Reemplazar los `print` de métricas por un tracker de experimentos para comparar
+  runs futuros sin re-ejecutar el notebook completo.
+
+- [ ] **Tests de contrato del pipeline de producción**
+  Verificar que `adult_best_model.joblib` rechaza correctamente inputs malformados
+  (columnas faltantes, tipos incorrectos, valores fuera de rango).
+
+- [ ] **Añadir AUC-ROC y matriz de confusión al informe final**
+  La tabla `final_results_df` solo tiene accuracy/precision/recall/F1. AUC-ROC es
+  independiente del threshold y da una visión más completa de cada modelo.
